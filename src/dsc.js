@@ -37,18 +37,16 @@ export default class DataSourceClient extends React.Component {
       delete: ""
     };
     this.add = this.add.bind(this);
+    this.delete = this.delete.bind(this);
   }
 
-  componentDidMount() {
-    fetch(this.URL_CONTINENTS)
-      .then(res => res.json())
-      .then(
-        (result) => {
-          this.setState({
-            continents: result
-          });
-        }
-      );
+  async componentDidMount() {
+    let response = await fetch(this.URL_CONTINENTS);
+    let result = await response.json();
+    
+    this.setState({
+      continents: result
+    });
   }
 
   regions(continentName) {
@@ -88,8 +86,12 @@ export default class DataSourceClient extends React.Component {
       .then(res => res.json())
       .then(
         (result) => {
+for (var e of result) {          
+console.log("DSC/COUNTRY/code = " + e.code);
+}
           this.setState({
             country: result,
+            countryCode: result[0].code,
             countryName: countryName
           });
         }
@@ -111,14 +113,14 @@ export default class DataSourceClient extends React.Component {
   }
 
   city(cityName) {
-    const url = this.urlCityPrefix + cityName;
+    const url = this.urlCityPrefix + cityName + "&countryCode=" + this.state.countryCode;
 
     fetch(url)
       .then(res => res.json())
       .then(
         (result) => {   
           this.setState({
-            city: result,
+            city: result
           });
         }
       );
@@ -132,11 +134,13 @@ export default class DataSourceClient extends React.Component {
       method: "POST",
       body: data
     })
-    .then((res) => { res.json(); })
+    .then((response) => { response.json(); })
     .then((result) => {
       console.log("RESULT: " + result);
-      }
-    )
+      this.setState({
+        add: result
+      })
+    })
     .catch(error => console.log("ADD/error: " + error));
 
     event.preventDefault();
@@ -154,36 +158,19 @@ export default class DataSourceClient extends React.Component {
       );
   }
 
-  delete(data) {
-    fetch(this.URL_CITY_DELETE, {method: "DELETE", data: data})
+  delete(event) {
+    const url = this.URL_CITY_DELETE + "/" + event.target.name;
+
+    fetch(url, {method: "DELETE"})
       .then((res) => { res.json(); })
       .then(
         (result) => {
+          console.log("DELETE: " + result);
           this.setState({
             delete: result
           });
         }
       );
-  }
-
-  submit(event) {
-    fetch(
-      "http://localhost:8000/app/add", {
-        method: "POST",
-        headers: "Content-Type: application/json",
-        body: {
-          city: JSON.stringify(this.state.newCity),
-          countryCode: JSON.stringify(this.state.newCountryCode),
-          district: JSON.stringify(this.state.newDistrict),
-          population: JSON.stringify(this.state.newPopulation)
-        }
-      }
-    ).then((res) => {res.json();})
-     .then((result) => {
-        this.setState({result: result});
-      }
-    )
-    .error((error) => {console.log(error);});
   }
 
   render() {
@@ -209,7 +196,10 @@ export default class DataSourceClient extends React.Component {
           {
             this.state.countries.map(c => (
             <span>
-              <input type="button" value={c.country} onClick={() => { this.country(c.country); }} />int32
+              <input type="button" value={c.country} onClick={() => { this.country(c.country); 
+                document.getElementById("cities").innerHTML = "";
+                document.getElementById("cities").style.display = "inline";
+                this.cities(this.state.countryName); }} />
               &nbsp;             
             </span>
           ))}
@@ -267,8 +257,8 @@ export default class DataSourceClient extends React.Component {
             }} 
           />
         </span>        
-        <h1>Cities:</h1>
-        <div id="cityContainer">
+        <h1 id="cityContainer">Cities:</h1>
+        <div>
           {
             this.state.cities.map(
               c => (
@@ -278,21 +268,7 @@ export default class DataSourceClient extends React.Component {
               )
             )
           }
-<div>
-{
-  <form id="addForm" onSubmit={this.add}>
-    <label for="newCity">Name: </label>
-    <input id="newCity" name="newCity" type="text" value={this.state.newCity} required onChange={(e) => {this.setState({newCity: e.target.value});}} />
-    <label for="newCountryCode">Country Code: </label>
-    <input id="newCountryCode" name="newCountryCode" type="text" value={this.state.newCountryCode} onChange={(e) => {this.setState({newCountryCode: e.target.value});}} />
-    <label for="newDistrict">District: </label>
-    <input id="district" name="district" type="text" value={this.state.district} onChange={(e) => {this.setState({district: e.target.value});}} />
-    <label for="population">Population: </label>
-    <input id="population" name="population" type="number" value={this.state.population} onChange={(e) => {this.setState({population: e.target.value});}} />
-    <input type="submit" value="Add" />
-  </form>
-}
-</div>
+      
         </div>
         <h1>City: {this.state.city.name}</h1>
         <div id="city">
@@ -305,14 +281,30 @@ export default class DataSourceClient extends React.Component {
                   <span>District: {c.district}</span>
                   <span>Population: {c.population}</span>
                   <span>Update</span>
-                  <span>Delete</span>
+                  <button name={c.id} onClick={this.delete}>Delete</button>
                 </div>
               )
             )
           }          
-        </div>        
+        </div>
+        <div>
+        <h1>Add City in {this.state.countryName}</h1>
+      {
+        <form id="addForm" onSubmit={this.add}>
+          <label for="newCity">Name: </label>
+          <input name="newCity" type="text" value={this.state.newCity} required onChange={(e) => {this.setState({newCity: e.target.value});}} />
+          <label for="newCountryCode">Country Code: </label>
+          <input name="newCountryCode" type="text" value={this.state.newCountryCode} onChange={(e) => {this.setState({newCountryCode: e.target.value});}} />
+          <label for="newDistrict">District: </label>
+          <input name="district" type="text" value={this.state.district} onChange={(e) => {this.setState({district: e.target.value});}} />
+          <label for="population">Population: </label>
+          <input name="population" type="number" value={this.state.population} onChange={(e) => {this.setState({population: e.target.value});}} />
+          <input type="submit" value="Add" />
+        </form>
+      }
+    </div>      
     </div>        
-   
+    
     );
   }
 }
